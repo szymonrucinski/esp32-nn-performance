@@ -9,7 +9,7 @@ Fixes:
 - Clip(min, max) → Relu (for Clip(0, 6) aka ReLU6; close enough for INT8)
 """
 import onnx
-from onnx import helper, TensorProto, numpy_helper
+from onnx import helper, numpy_helper
 import numpy as np
 import glob
 import os
@@ -199,7 +199,6 @@ def replace_clip_with_relu(model):
             continue
 
         min_val = init_map.get(node.input[1] if len(node.input) > 1 else "", None)
-        max_val = init_map.get(node.input[2] if len(node.input) > 2 else "", None)
 
         if min_val is not None and float(min_val) == 0.0:
             relu_node = helper.make_node(

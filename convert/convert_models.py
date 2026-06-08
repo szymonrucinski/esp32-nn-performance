@@ -3,7 +3,6 @@ import os
 import sys
 import glob
 import subprocess
-import numpy as np
 
 MODELS_DIR = "/workspace/model_ckpts/onnx"
 OUTPUT_DIR = "/workspace/model_ckpts/tflite_static"

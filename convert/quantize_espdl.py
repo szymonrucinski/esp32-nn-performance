@@ -43,7 +43,7 @@ INPUT_SHAPE = (1, 3, 64, 64)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 from esp_ppq import QuantizationSettingFactory
-from esp_ppq.api import espdl_quantize_onnx, get_target_platform
+from esp_ppq.api import espdl_quantize_onnx
 from esp_ppq.core import TargetPlatform
 
 # Layers esp-ppq flags with exponent overflow (output_exp - in_exp - w_exp < 0).
@@ -85,7 +85,7 @@ def make_eurosat_dataloader(batch_size, num_batches):
 
     # Find all jpg/tif images
     img_paths = []
-    for root, dirs, files in os.walk(EUROSAT_DIR):
+    for root, _dirs, files in os.walk(EUROSAT_DIR):
         for f in files:
             if f.lower().endswith(('.jpg', '.jpeg', '.png', '.tif')):
                 img_paths.append(os.path.join(root, f))
@@ -128,7 +128,7 @@ if sys.argv[1:]:
 download_eurosat()
 calib_data = make_eurosat_dataloader(BATCH_SIZE, NUM_CALIB_BATCHES)
 
-for name, info in MODELS.items():
+for name in MODELS:
     onnx_files = [f for f in glob.glob(f"{MODELS_DIR}/{name}_nogemm.onnx")]
     if not onnx_files:
         print(f"SKIP {name}: no ONNX file found")
