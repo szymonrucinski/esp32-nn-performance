@@ -1,0 +1,20 @@
+services:
+  esp-idf:
+    image: espressif/idf:release-v5.3
+    container_name: mobilenetv2-esp32s3-idf
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    devices:
+      # ESP32-S3 built-in USB-JTAG/serial enumerates as /dev/ttyACM0
+      - "${ESP32_PORT:-/dev/ttyACM0}:${ESP32_PORT:-/dev/ttyACM0}"
+    group_add:
+      - "${TTY_GROUP:-18}"
+    environment:
+      - ESPPORT=${ESP32_PORT:-/dev/ttyACM0}
+      - IDF_PATH=/opt/esp/idf
+      # Avoid ccache trying to write to '/.ccache' when HOME is unset/odd.
+      - CCACHE_DIR=/workspace/.ccache
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    tty: true
+    stdin_open: true

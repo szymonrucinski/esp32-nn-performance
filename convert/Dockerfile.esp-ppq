@@ -1,0 +1,17 @@
+# esp-ppq quantizer: ONNX -> INT8/INT16 .espdl for ESP-DL.
+# GPU base (CUDA 12.1) — only the MobileNetV3 INT16+LSQ gradient-PTQ path needs
+# a GPU; plain INT8 PTQ for the other models runs CPU-only.
+FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates git libjpeg-dev libpng-dev \
+        libgl1-mesa-glx libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# numpy<2 is REQUIRED: torch 2.2.2 ABI breaks against numpy 2.x at quantize time
+# ("Numpy is not available"). esp-ppq 1.3.1 is the version these results used.
+RUN pip install --no-cache-dir "numpy<2" \
+        "git+https://github.com/espressif/esp-ppq.git@1.3.1"
+
+WORKDIR /workspace
+CMD ["/bin/bash"]

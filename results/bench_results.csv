@@ -1,0 +1,3 @@
+model,mmac,ms_per_inf,mj_per_inf,mac_per_cycle,min_ms,max_ms,status
+MobileNetV3,6.12,,,,,,ok
+MobileNetV3_INT8_power,6.12,34.81,5.332,0.7325,5.218,5.379,ok_power_measured

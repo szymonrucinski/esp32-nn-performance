@@ -1,0 +1,12 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/imagenet_cls:
+    version: "*"
+  espressif/esp32_p4_function_ev_board_noglib:
+    version: "*"
+    rules:
+     - if: "target == esp32p4"
+  espressif/esp32_s3_eye:
+    version: "*"
+    rules:
+     - if: "target == esp32s3"

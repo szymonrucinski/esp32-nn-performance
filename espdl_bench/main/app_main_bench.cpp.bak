@@ -1,0 +1,77 @@
+#include "model_config.h"
+#include "dl_model_base.hpp"
+#include "esp_log.h"
+#include "esp_timer.h"
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <cstdio>
+
+extern const uint8_t espdl_model_start[] asm("_binary_model_espdl_start");
+
+#define NUM_WARMUP 3
+#define NUM_RUNS 10
+#define CPU_FREQ_MHZ 240
+#define EST_POWER_MW 50.0f
+
+static const char *err_msg = "none";
+static char result_buf[256] = "no results yet";
+
+extern "C" void app_main(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+
+    dl::Model *model = new dl::Model(
+        (const char *)espdl_model_start,
+        fbs::MODEL_LOCATION_IN_FLASH_RODATA);
+    if (!model) {
+        err_msg = "Model load failed";
+        goto idle;
+    }
+
+    model->minimize();
+
+    {
+        // Warmup
+        for (int i = 0; i < NUM_WARMUP; i++) {
+            model->run();
+        }
+
+        // Benchmark
+        int64_t total_us = 0;
+        int64_t min_us = INT64_MAX;
+        int64_t max_us = 0;
+
+        for (int i = 0; i < NUM_RUNS; i++) {
+            int64_t start = esp_timer_get_time();
+            model->run();
+            int64_t elapsed = esp_timer_get_time() - start;
+            total_us += elapsed;
+            if (elapsed < min_us) min_us = elapsed;
+            if (elapsed > max_us) max_us = elapsed;
+        }
+
+        float avg_ms = (float)total_us / NUM_RUNS / 1000.0f;
+        float mj_per_inf = EST_POWER_MW * avg_ms / 1000.0f;
+        float total_cycles = (avg_ms / 1000.0f) * CPU_FREQ_MHZ * 1e6f;
+        float mac_per_cycle = (total_cycles > 0) ? (MODEL_MMAC * 1e6f) / total_cycles : 0;
+
+        snprintf(result_buf, sizeof(result_buf),
+                 "OK %s ms/inf=%.2f mJ/inf=%.2f MAC/cycle=%.4f min=%.2f max=%.2f",
+                 MODEL_NAME, (double)avg_ms, (double)mj_per_inf, (double)mac_per_cycle,
+                 (double)(min_us / 1000.0f), (double)(max_us / 1000.0f));
+    }
+
+    delete model;
+
+idle:
+    while (true) {
+        printf("STATUS err=%s psram=%u internal=%u result=[%s]\n",
+               err_msg, (unsigned)free_psram, (unsigned)free_internal, result_buf);
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}

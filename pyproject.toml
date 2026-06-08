@@ -1,0 +1,9 @@
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+# E722 (bare except) is intentional in PPK2 port-probing/flush paths where any
+# failure simply means "try the next device".
+ignore = ["E501"]

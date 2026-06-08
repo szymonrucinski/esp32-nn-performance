@@ -1,0 +1,38 @@
+# host venv
+esp32-s3-profiling/
+.venv/
+__pycache__/
+*.pyc
+
+# ESP-IDF build artifacts + downloaded deps
+**/build/
+**/managed_components/
+**/dependencies.lock
+sdkconfig.old
+.esp-idf-home/
+
+model_ckpts/
+*.zip
+*.espdl
+*.info
+*.onnx
+*.pth
+*.tflite
+
+# transient per-model copy
+espdl_bench/main/model.espdl
+
+# tool caches
+.ruff_cache/
+.ccache/
+*.orig
+
+# raw logs / scratch
+bt.txt
+bt_decoded.txt
+panic_raw.txt
+run3.txt
+*.output
+
+# host-specific config (copy to .env)
+.env
