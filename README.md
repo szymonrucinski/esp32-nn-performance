@@ -81,6 +81,16 @@ python3 espdl_bench/measure_power_ppk2.py SqueezeNet
 - PPK2 source mode: `VOUT` to `J9 pin 2 (VDD_3V3)`, `GND` to `J9 GND`. Board boots
   from VOUT, no USB needed.
 
+### Wiring
+
+![ESP32-S3-EYE external flash / power header](https://github.com/prusa3d/Prusa-Firmware-ESP32-Cam/raw/master/doc/ESP32-S3-EYE-22/ext_flash.png)
+
+| Wire  | Pin       |
+|-------|-----------|
+| Green | PIN48     |
+| Red   | VCC 3.3V  |
+| Blue  | GND       |
+
 ## References
 
 Power meter — Nordic Power Profiler Kit 2 (PPK2), source-meter mode:
