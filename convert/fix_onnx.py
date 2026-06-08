@@ -13,6 +13,7 @@ from onnx import helper, TensorProto, numpy_helper
 import numpy as np
 import glob
 import os
+import sys
 
 MODELS_DIR = "/workspace/model_ckpts/onnx"
 OUTPUT_DIR = "/workspace/model_ckpts/onnx_fixed"
@@ -214,7 +215,11 @@ def replace_clip_with_relu(model):
     return model, count
 
 
-for name in ["MCUNetV1", "EfficientNet", "MobileNetV3", "SqueezeNet"]:
+# Optional CLI filter: `python fix_onnx.py EfficientNet` does just that model.
+ALL_MODELS = ["MCUNetV1", "EfficientNet", "MobileNetV3", "SqueezeNet"]
+models = sys.argv[1:] or ALL_MODELS
+
+for name in models:
     files = glob.glob(f"{MODELS_DIR}/{name}_*.onnx")
     files = [f for f in files if "simplified" not in f and "fixed" not in f]
     if not files:

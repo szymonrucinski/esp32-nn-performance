@@ -121,6 +121,10 @@ MODELS = {
     "EfficientNet": {"mmac": 32.17},
 }
 
+# Optional CLI filter: `python quantize_espdl.py EfficientNet` quantizes just that.
+if sys.argv[1:]:
+    MODELS = {k: v for k, v in MODELS.items() if k in sys.argv[1:]}
+
 download_eurosat()
 calib_data = make_eurosat_dataloader(BATCH_SIZE, NUM_CALIB_BATCHES)
 
