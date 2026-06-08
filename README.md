@@ -17,7 +17,7 @@ flowchart LR
     D --> E[.espdl model]
     E --> F["ESP-DL firmware<br/>build + flash"]
     F --> G[ESP32-S3 board]
-    G --> H["bench_all.sh<br/>latency + MAC/cycle"]
+    G --> H["bench.sh<br/>latency + MAC/cycle"]
     G --> I["PPK2 source meter<br/>measure_power_ppk2.py"]
     H --> J[(results CSV)]
     I --> J
@@ -55,13 +55,23 @@ uv pip install -r requirements-host.txt
 
 ## Run
 
+One firmware serves both phases: it prints a latency line on boot, then loops
+forever for the PPK2. No firmware swapping.
+
 ```bash
-./espdl_bench/bench_all.sh             # latency + MAC/cycle, all models
-python3 espdl_bench/measure_power_ppk2.py   # PPK2 energy (board on PPK2, USB out)
+# Latency + MAC/cycle (USB-JTAG). All models, or pass names to filter.
+./espdl_bench/bench.sh
+./espdl_bench/bench.sh SqueezeNet MCUNetV1
+
+# Energy with the PPK2 (board on PPK2, USB unplugged). One model per run;
+# latency is read back from results/bench_results.csv.
+python3 espdl_bench/measure_power_ppk2.py SqueezeNet
 ```
 
-Output goes to `results/`. Quantize with `convert/quantize_espdl.py` (ONNX to INT8
-`.espdl`); pass a model name to run just one, e.g. `python convert/quantize_espdl.py SqueezeNet`.
+`bench.sh` writes `results/bench_results.csv` and folds in PPK2 energy if a
+`results/power_<model>_int8.csv` exists. Quantize with
+`convert/quantize_espdl.py` (ONNX to INT8 `.espdl`); both convert scripts and
+`bench.sh` take an optional model-name filter.
 
 ## Hardware
 

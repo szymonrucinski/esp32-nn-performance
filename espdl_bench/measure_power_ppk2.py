@@ -48,8 +48,50 @@ SERIAL_READ_S = 4  # how long to sniff the ESP serial for a STATUS line
 MEAS_S = 10  # current-averaging window per run (seconds)
 N_RUNS = 10  # number of independent measurement runs
 ESP_VID = 0x303A  # Espressif USB-JTAG
-FALLBACK_MS = 130.03  # SqueezeNet INT8 latency
-MODEL_NAME = "SqueezeNet_INT8"
+
+HERE = os.path.dirname(__file__)
+BENCH_CSV = os.path.join(HERE, "..", "results", "bench_results.csv")
+
+# Built-in fallback latency (ms/inf) used only if bench_results.csv lacks a row.
+# Keep in sync with espdl_bench/bench.sh; the CSV is the real source of truth.
+LATENCY_FALLBACK = {
+    "MobileNetV3": 34.81,
+    "MCUNetV1": 75.93,
+    "EfficientNet": 252.48,
+    "SqueezeNet": 130.03,
+}
+
+
+def resolve_latency(model):
+    """Latency for `model` from results/bench_results.csv, else the fallback.
+
+    In PPK2 source mode the ESP USB is unplugged so the firmware never
+    enumerates and live latency can't be read; energy = P_avg * latency, so a
+    wrong latency here silently corrupts mJ/inf. Tie it to the measured CSV."""
+    try:
+        with open(BENCH_CSV) as f:
+            for row in csv.DictReader(f):
+                if row.get("model") == model and row.get("ms_per_inf"):
+                    return float(row["ms_per_inf"]), "bench_results.csv"
+    except FileNotFoundError:
+        pass
+    if model in LATENCY_FALLBACK:
+        return LATENCY_FALLBACK[model], "built-in fallback"
+    return None, None
+
+
+def parse_args():
+    """Require a model name; resolve its latency and the output naming."""
+    models = sorted(LATENCY_FALLBACK)
+    if len(sys.argv) != 2 or sys.argv[1] not in LATENCY_FALLBACK:
+        sys.exit(f"usage: measure_power_ppk2.py <model>\n  models: {', '.join(models)}")
+    model = sys.argv[1]
+    latency, src = resolve_latency(model)
+    print(f"model={model}  latency={latency} ms ({src})")
+    return f"{model}_INT8", latency
+
+
+MODEL_NAME, FALLBACK_MS = parse_args()
 
 
 def _flush_port(dev):

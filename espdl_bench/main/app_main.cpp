@@ -1,18 +1,24 @@
-// EuroSAT land-cover classifier on ESP32-S3 (Xtensa LX7) via ESP-DL.
-// Follows Espressif's recommended classification flow:
-//   ImagePreprocessor (resize + normalize + quantize-to-input-exponent)
-//   -> Model::run()
-//   -> ClsPostprocessor (dequantize + softmax + top-k argmax).
-// Deploys MobileNetV3 (INT16, ~91.5% top-1). One embedded test image is
-// classified and compared against its known label to verify the deploy path
-// end-to-end (should match verify_accuracy.py's host prediction).
+// EuroSAT classifier + benchmark firmware for ESP32-S3 (Xtensa LX7) via ESP-DL.
+// One image is classified to verify the deploy path, then the firmware runs
+// BOTH benchmark phases so a single build serves both host tools:
+//
+//   Phase 1 (latency)  — NUM_WARMUP warmups + NUM_TIMED timed runs, then prints
+//       one line:  result=[OK <name> ms/inf=.. MAC/cycle=.. min=.. max=..]
+//       parsed by espdl_bench/bench.sh into results/bench_results.csv.
+//   Phase 2 (power)    — continuous inference forever, emitting per-inference
+//       STATUS lines, sampled by espdl_bench/measure_power_ppk2.py via a PPK2.
+//
+// Energy (mJ/inf) is NOT estimated on-device; it is measured externally with
+// the PPK2 (P_avg x latency). No fixed-power guess lives here.
 #include "dl_model_base.hpp"
 #include "dl_image_preprocessor.hpp"
 #include "dl_image_define.hpp"
 #include "eurosat_cls_postprocessor.hpp"
 #include "eurosat_category_name.hpp"
 #include "test_image.h"
+#include "model_config.h"   // MODEL_NAME, MODEL_MMAC (written per-model by bench.sh)
 #include <cmath>
+#include <cstdint>
 
 #include "esp_log.h"
 #include "esp_heap_caps.h"
@@ -22,11 +28,15 @@
 #include <cstdio>
 #include <string>
 
-// Power-profiling protocol (read by espdl_bench/measure_power_ppk2.py):
+// Phase 1 (latency) constants.
+#define NUM_WARMUP     3         // discarded runs to prime caches/PSRAM
+#define NUM_TIMED      10        // timed runs averaged for ms/inf
+#define CPU_FREQ_MHZ   240       // Xtensa LX7 clock, for MAC/cycle
+
+// Phase 2 (power) protocol, read by espdl_bench/measure_power_ppk2.py:
 //   STATUS run=<r> inf=<k> ms/inf=<t> true=<l> pred=<p>   (one per inference)
 //   STATUS run=<r> burst_done                             (end of a burst)
-// then BURST_IDLE_MS of idle so the host can sample an idle-baseline current.
-#define BURST_SIZE     10        // inferences per run
+#define BURST_SIZE     10        // inferences per burst
 #define BURST_IDLE_MS  0         // no idle — continuous inference for clean power measurement
 
 extern const uint8_t espdl_model_start[] asm("_binary_model_espdl_start");
@@ -118,11 +128,35 @@ extern "C" void app_main(void)
                      o->get_size());
         }
 
-        snprintf(result_buf, sizeof(result_buf),
-                 "OK true=%s pred=%s score=%.3f",
-                 TEST_IMG_TRUE_LABEL, top1, (double)top1_score);
+        // --- Phase 1: latency benchmark (parsed by bench.sh) ---
+        // Re-running the same preprocessed input is a faithful, deterministic
+        // inference (same MACs, same path) — ideal for timing and profiling.
+        for (int i = 0; i < NUM_WARMUP; i++) model->run();
 
-        // --- power-profiling loop: bursts of timed inferences + idle gaps ---
+        int64_t total_us = 0, min_us = INT64_MAX, max_us = 0;
+        for (int i = 0; i < NUM_TIMED; i++) {
+            int64_t t0 = esp_timer_get_time();
+            model->run();
+            int64_t dt = esp_timer_get_time() - t0;
+            total_us += dt;
+            if (dt < min_us) min_us = dt;
+            if (dt > max_us) max_us = dt;
+        }
+        double avg_ms = (double)total_us / NUM_TIMED / 1000.0;
+        double cycles = (avg_ms / 1000.0) * CPU_FREQ_MHZ * 1e6;
+        double mac_per_cycle = cycles > 0 ? (MODEL_MMAC * 1e6) / cycles : 0.0;
+
+        // mJ/inf is measured externally (PPK2), so it is deliberately omitted here.
+        snprintf(result_buf, sizeof(result_buf),
+                 "OK %s ms/inf=%.2f MAC/cycle=%.4f min=%.2f max=%.2f "
+                 "true=%s pred=%s score=%.3f",
+                 MODEL_NAME, avg_ms, mac_per_cycle,
+                 (double)min_us / 1000.0, (double)max_us / 1000.0,
+                 TEST_IMG_TRUE_LABEL, top1, (double)top1_score);
+        printf("STATUS err=none result=[%s]\n", result_buf);
+        fflush(stdout);
+
+        // --- Phase 2: power-profiling loop (continuous inference for PPK2) ---
         // Input tensor stays preprocessed; re-running it is a faithful, fully
         // deterministic inference (same MACs, same power) — ideal for profiling.
         int run_idx = 0;
