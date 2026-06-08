@@ -9,12 +9,12 @@ continuous inference per model.
 
 ## Results (INT8, EuroSAT)
 
-| Model        | MMAC  | ms/inf | mJ/inf         | MAC/cycle | top-1 (float to quant) |
-|--------------|-------|--------|----------------|-----------|------------------------|
-| MobileNetV3  | 6.12  | 34.81  | 8.846 ± 0.013  | 0.7325    | 98% to ~10% (PTQ broke) |
-| MCUNetV1     | 20.41 | 75.93  | 19.883 ± 0.037 | 1.1200    | n/a (1000-class proxy)  |
-| EfficientNet | 32.17 | 252.48 | 63.028 ± 0.155 | 0.5309    | 98.4% to 19.2% (PTQ broke) |
-| SqueezeNet   | 51.61 | 130.03 | 34.685 ± 0.055 | 1.6537    | 97% to 90.4%           |
+| Model        | MMAC  | ms/inf | mJ/inf         | MAC/cycle |
+|--------------|-------|--------|----------------|-----------|
+| MobileNetV3  | 6.12  | 34.81  | 8.846 ± 0.013  | 0.7325    |
+| MCUNetV1     | 20.41 | 75.93  | 19.883 ± 0.037 | 1.1200    |
+| EfficientNet | 32.17 | 252.48 | 63.028 ± 0.155 | 0.5309    |
+| SqueezeNet   | 51.61 | 130.03 | 34.685 ± 0.055 | 1.6537    |
 
 Active power is 250 to 267 mW board level for all models. Energy per MAC is
 0.67 to 1.96 mJ/MMAC, in line with the reference below.
