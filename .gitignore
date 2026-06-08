@@ -11,6 +11,7 @@ __pycache__/
 sdkconfig.old
 .esp-idf-home/
 
+# big model artifacts (regenerate via convert/ pipeline)
 model_ckpts/
 *.zip
 *.espdl

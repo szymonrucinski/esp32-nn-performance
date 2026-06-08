@@ -7,6 +7,22 @@ column of an IEEE TIM cross-platform table.
 Energy is measured with a Nordic PPK2 source meter on the 3V3 rail. 10 runs of
 continuous inference per model.
 
+## Pipeline
+
+```mermaid
+flowchart LR
+    A[PyTorch .pth] --> B[ONNX export]
+    B --> C["fix_onnx.py<br/>Gemm to Conv1x1, Clip to Relu"]
+    C --> D["quantize_espdl.py<br/>esp-ppq INT8 PTQ"]
+    D --> E[.espdl model]
+    E --> F["ESP-DL firmware<br/>build + flash"]
+    F --> G[ESP32-S3 board]
+    G --> H["bench_all.sh<br/>latency + MAC/cycle"]
+    G --> I["PPK2 source meter<br/>measure_power_ppk2.py"]
+    H --> J[(results CSV)]
+    I --> J
+```
+
 ## Results (INT8, EuroSAT)
 
 | Model        | MMAC  | ms/inf | mJ/inf         | MAC/cycle |
@@ -45,6 +61,7 @@ python3 espdl_bench/measure_power_ppk2.py   # PPK2 energy (board on PPK2, USB ou
 ```
 
 Output goes to `results/`. Quantize with `convert/quantize_espdl.py` (ONNX to INT8
+`.espdl`); pass a model name to run just one, e.g. `python convert/quantize_espdl.py SqueezeNet`.
 
 ## Hardware
 
@@ -54,7 +71,12 @@ Output goes to `results/`. Quantize with `convert/quantize_espdl.py` (ONNX to IN
 - PPK2 source mode: `VOUT` to `J9 pin 2 (VDD_3V3)`, `GND` to `J9 GND`. Board boots
   from VOUT, no USB needed.
 
-## Reference
+## References
+
+Power meter — Nordic Power Profiler Kit 2 (PPK2), source-meter mode:
+
+- Product: <https://www.nordicsemi.com/Products/Development-tools/Power-Profiler-Kit-2>
+- Python driver (`ppk2-api`): <https://github.com/IRNAS/ppk2-api-python>
 
 Same chip, same meter (PPK2), CNN inference energy:
 
